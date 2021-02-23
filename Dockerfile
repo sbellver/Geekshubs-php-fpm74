@@ -3,17 +3,26 @@ ARG TIMEZONE
 
 MAINTAINER Geekshubs
 
+ENV ACCEPT_EULA=Y
+
+# Fix debconf warnings upon build
+ARG DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update && apt-get install -y \
     git \
     openssl \
     unzip \
     wget \
     supervisor \
-    cron
+    cron \
+    htop
 
 RUN apt-get install -y zlib1g-dev
 RUN apt-get install -y libpq-dev
 RUN apt-get install -y libc-client-dev libkrb5-dev
+
+# Php 7.4
+
 
 RUN wget -O phpunit.phar https://phar.phpunit.de/phpunit-7.4.0.phar && \
 chmod +x phpunit.phar &&  cp phpunit.phar /usr/local/lib/php
@@ -21,8 +30,7 @@ chmod +x phpunit.phar &&  cp phpunit.phar /usr/local/lib/php
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 RUN composer --version
 
-
-#Modificar php-fpm 
+#Modificar php-fpm
 ADD ./www.conf   /usr/local/etc/php-fpm.d/www.conf
 
 #Setear TimeZone.
@@ -52,6 +60,23 @@ RUN docker-php-ext-install curl
 RUN docker-php-ext-install xmlrpc
 RUN docker-php-ext-install xmlwriter
 RUN docker-php-ext-install xml
+RUN docker-php-ext-install json
+RUN docker-php-ext-install opcache
+RUN docker-php-ext-install curl
+RUN docker-php-ext-install intl
+
+RUN apt-get install -y libonig-dev
+RUN docker-php-ext-install mbstring
+
+RUN apt-get update -y && apt-get install -y libwebp-dev libjpeg62-turbo-dev libpng-dev libxpm-dev \
+    libfreetype6-dev
+RUN apt-get update && \
+    apt-get install -y \
+        zlib1g-dev
+RUN apt-get install -y libzip-dev
+RUN docker-php-ext-install zip
+RUN docker-php-ext-install gd
+
 
 #install Imagemagick & PHP Imagick ext
 RUN apt-get update && apt-get install -y \
@@ -59,6 +84,16 @@ RUN apt-get update && apt-get install -y \
 
 RUN pecl install imagick && docker-php-ext-enable imagick
 
+# MSQL
+RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+    && curl https://packages.microsoft.com/config/debian/9/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && apt-get -y --no-install-recommends install msodbcsql17 unixodbc-dev \
+    && pecl install sqlsrv \
+    && pecl install pdo_sqlsrv \
+    && echo "extension=pdo_sqlsrv.so" >> `php --ini | grep "Scan for additional .ini files" | sed -e "s|.*:\s*||"`/30-pdo_sqlsrv.ini \
+    && echo "extension=sqlsrv.so" >> `php --ini | grep "Scan for additional .ini files" | sed -e "s|.*:\s*||"`/30-sqlsrv.ini \
+    && apt-get clean; rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
 
 #APM -AGENT
 # RUN mkdir -p /home/apm-agent && \
